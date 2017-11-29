@@ -111,14 +111,17 @@ func (b *BasePathFs) OpenFile(name string, flag int, mode os.FileMode) (f File, 
 	if name, err = b.RealPath(name); err != nil {
 		return nil, &os.PathError{Op: "openfile", Path: name, Err: err}
 	}
-	return b.source.OpenFile(name, flag, mode)
+	srcFile, err := b.source.OpenFile(name, flag, mode)
+	return baseFile{srcFile, b.path}, err
 }
 
 func (b *BasePathFs) Open(name string) (f File, err error) {
 	if name, err = b.RealPath(name); err != nil {
 		return nil, &os.PathError{Op: "open", Path: name, Err: err}
 	}
-	return b.source.Open(name)
+	srcFile, err := b.source.Open(name)
+	return baseFile{srcFile, b.path}, err
+
 }
 
 func (b *BasePathFs) Mkdir(name string, mode os.FileMode) (err error) {
@@ -139,7 +142,22 @@ func (b *BasePathFs) Create(name string) (f File, err error) {
 	if name, err = b.RealPath(name); err != nil {
 		return nil, &os.PathError{Op: "create", Path: name, Err: err}
 	}
-	return b.source.Create(name)
+	srcFile, err := b.source.Create(name)
+	return baseFile{srcFile, b.path}, err
+}
+
+type baseFile struct {
+	File
+	basePath string
+}
+
+func (b baseFile) Name() string {
+	relPath, err := filepath.Rel(b.basePath, b.File.Name())
+	if err != nil {
+		// we tried
+		return b.File.Name()
+	}
+	return filepath.Join("/", relPath)
 }
 
 // vim: ts=4 sw=4 noexpandtab nolist syn=go
